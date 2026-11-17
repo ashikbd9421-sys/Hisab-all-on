@@ -1,0 +1,52 @@
+# Codemagic workflow for building আশিক হিসাব APK
+# Put this file at the ROOT of your GitHub repository (same level as
+# pubspec.yaml, or one level above the ashik_hisab folder — it finds it).
+#
+# In Codemagic: Applications -> add app -> after connecting the repo,
+# choose "Scan for codemagic.yaml" and select this workflow, then Start build.
+
+workflows:
+  ashik-hisab-apk:
+    name: Ashik Hisab APK Build
+    max_build_duration: 40
+    environment:
+      flutter: stable
+    scripts:
+      - name: Setup project and build APK
+        script: |
+          set -e
+          # 1) Find the folder that contains pubspec.yaml
+          if [ -f pubspec.yaml ]; then
+            echo "Project root found at repo root."
+          elif [ -f ashik_hisab/pubspec.yaml ]; then
+            echo "Project found in nested folder; entering ashik_hisab/"
+            cd ashik_hisab
+          else
+            echo "ERROR: pubspec.yaml not found in repo root or ashik_hisab/."
+            echo "Make sure you pushed the project files (not the zip) to GitHub."
+            exit 1
+          fi
+
+          # 2) Generate Android platform files (not committed in the repo)
+          flutter config --no-analytics
+          flutter create . --org com.ashik --project-name ashik_hisab --platforms android
+
+          # 3) Make sure the launcher shows the Bengali app name
+          sed -i.bak 's/android:label="ashik_hisab"/android:label="আশিক হিসাব"/' android/app/src/main/AndroidManifest.xml
+          grep 'android:label' android/app/src/main/AndroidManifest.xml
+
+          # 4) Dependencies
+          flutter pub get
+
+          # 5) Build the release APK
+          flutter build apk --release
+
+          # 6) Show the output path
+          ls -la build/app/outputs/flutter-apk/
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+    publishing:
+      email:
+        recipients:
+          - ashikbd9421@gmail.com
+        
